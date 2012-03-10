@@ -2,8 +2,9 @@
 ##### How to Build #####
 ########################
 
-(1) Get Toolchain from Codesourcery site. (http://www.codesourcery.com)
+(1a) Still trying to get this to work with cygwin. Will update when I find a way.
 
+(1) Get Toolchain from Codesourcery site. (http://www.codesourcery.com)
     ex) Download : https://sourcery.mentor.com/sgpp/lite/arm/portal/subscription?@template=lite
     
     recommand - Feature : ARM
