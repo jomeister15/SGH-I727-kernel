@@ -693,6 +693,257 @@ static ssize_t show_bios_limit(struct cpufreq_policy *policy, char *buf)
 	}
 	return sprintf(buf, "%u\n", policy->cpuinfo.max_freq);
 }
+#ifdef CONFIG_SYS_VOLTAGE_TABLE
+extern ssize_t clock8x60_get_sys_vdd_levels_str(char *buf);
+extern void clock8x60_set_sys_vdd(unsigned int level, int vdd_uv);
+
+static ssize_t show_sys_vdd_levels(struct kobject *a, struct attribute *b, char *buf) {
+	return clock8x60_get_sys_vdd_levels_str(buf);
+}
+
+static ssize_t store_sys_vdd_levels(struct kobject *a, struct attribute *b, const char *buf, size_t count) {
+
+	int i = 0, j;
+	int pair[2] = { 0, 0 };
+	int sign = 0;
+
+	if (count < 1)
+		return 0;
+
+	if (buf[0] == '-') {
+		sign = -1;
+		i++;
+	}
+	else if (buf[0] == '+') {
+		sign = 1;
+		i++;
+	}
+
+	for (j = 0; i < count; i++) {
+	
+		char c = buf[i];
+		
+		if ((c >= '0') && (c <= '9')) {
+			pair[j] *= 10;
+			pair[j] += (c - '0');
+		}
+		else if ((c == ' ') || (c == '\t')) {
+			if (pair[j] != 0) {
+				j++;
+
+				if ((sign != 0) || (j > 1))
+					break;
+			}
+		}
+		else
+			break;
+	}
+
+	if (sign != 0) {
+		if (pair[0] > 0)
+			clock8x60_set_sys_vdd(0, sign * pair[0]);
+	}
+	else {
+		if ((pair[0] > 0) && (pair[1] > 0))
+			clock8x60_set_sys_vdd((unsigned)pair[0], pair[1]);
+		else
+		pr_err("Invalid SYS VDD setting\n");
+			return -EINVAL;
+	}
+	return count;
+}
+#endif //CONFIG_SYS_VOLTAGE_TABLE
+
+#ifdef CONFIG_CPU_L2_TABLE
+extern ssize_t acpuclk_get_cpu_l2_levels_str(char *buf);
+extern void acpuclk_set_cpu_l2(unsigned cpu_khz, int l2_khz);
+
+static ssize_t show_cpu_l2_levels(struct kobject *a, struct attribute *b, char *buf) {
+	return acpuclk_get_cpu_l2_levels_str(buf);
+}
+
+static ssize_t store_cpu_l2_levels(struct kobject *a, struct attribute *b, const char *buf, size_t count) {
+
+	int i = 0, j;
+	int pair[2] = { 0, 0 };
+	int sign = 0;
+
+	if (count < 1)
+		return 0;
+
+	if (buf[0] == '-') {
+		sign = -1;
+		i++;
+	}
+	else if (buf[0] == '+') {
+		sign = 1;
+		i++;
+	}
+
+	for (j = 0; i < count; i++) {
+	
+		char c = buf[i];
+		
+		if ((c >= '0') && (c <= '9')) {
+			pair[j] *= 10;
+			pair[j] += (c - '0');
+		}
+		else if ((c == ' ') || (c == '\t')) {
+			if (pair[j] != 0) {
+				j++;
+
+				if ((sign != 0) || (j > 1))
+					break;
+			}
+		}
+		else
+			break;
+	}
+
+	if (sign != 0) {
+		if (pair[0] > 0)
+			acpuclk_set_cpu_l2(0, sign * pair[0]);
+	}
+	else {
+		if ((pair[0] > 0) && (pair[1] > 0))
+			acpuclk_set_cpu_l2((unsigned)pair[0], pair[1]);
+		else
+		pr_err("Invalid CPU L2 setting\n");
+			return -EINVAL;
+	}
+	return count;
+}
+
+#endif //CONFIG_CPU_L2_TABLE
+
+#ifdef CONFIG_L2_VOLTAGE_TABLE
+extern ssize_t acpuclk_get_l2_levels_str(char *buf);
+extern void acpuclk_set_l2(unsigned khz, int vdd_dig, int vdd_mem);
+
+static ssize_t show_l2_levels(struct kobject *a, struct attribute *b, char *buf) {
+	return acpuclk_get_l2_levels_str(buf);
+}
+
+static ssize_t store_l2_levels(struct kobject *a, struct attribute *b, const char *buf, size_t count) {
+	int i = 0, j;
+	int set[3] = { 0, 0, 0};
+	int sign = 0;
+
+	if (count < 1) {
+		pr_err("Bailing on setting L2, count %d\n", count);
+		return 0;
+	}
+
+	if (buf[0] == '-') {
+		sign = -1;
+		i++;
+	}
+	else if (buf[0] == '+') {
+		sign = 1;
+		i++;
+	}
+
+	for (j = 0; i < count; i++) {
+	
+		char c = buf[i];
+		
+		if ((c >= '0') && (c <= '9')) {
+			set[j] *= 10;
+			set[j] += (c - '0');
+		}
+		else if ((c == ' ') || (c == '\t')) {
+			if (set[j] != 0) {
+				j++;
+
+				if ((sign != 0) || (j > 2))
+					break;
+			}
+		}
+		else
+			break;
+	}
+
+	if (sign != 0) {
+		if (set[0] > 0) {
+			acpuclk_set_l2(0, sign * set[0], sign * set[0]);
+			//pr_err("Would have set L2 to delta %d\n", sign * set[0]);
+		}
+	}
+	else {
+		if ((set[0] > 0) && (set[1] > 0) && (set[2] > 0)) {
+			acpuclk_set_l2((unsigned)set[0], set[1], set[1]);
+			//pr_err("Would have set L2(%u) to vdd_dig: %u vdd_mem: %u\n", (unsigned)set[0], set[1], set[2]);
+		}
+		else {
+			pr_err("Invalid L2 VDD setting\n");
+			return -EINVAL;
+		}
+	}
+	return count;
+}
+#endif //CONFIG_L2_VOLTAGE_TABLE
+
+#ifdef CONFIG_CPU_VOLTAGE_TABLE
+
+extern ssize_t acpuclk_get_vdd_levels_str(char *buf);
+extern void acpuclk_set_vdd(unsigned acpu_khz, int vdd);
+
+static ssize_t show_vdd_levels(struct kobject *a, struct attribute *b, char *buf) {
+	return acpuclk_get_vdd_levels_str(buf);
+}
+
+static ssize_t store_vdd_levels(struct kobject *a, struct attribute *b, const char *buf, size_t count) {
+
+	int i = 0, j;
+	int pair[2] = { 0, 0 };
+	int sign = 0;
+
+	if (count < 1)
+		return 0;
+
+	if (buf[0] == '-') {
+		sign = -1;
+		i++;
+	}
+	else if (buf[0] == '+') {
+		sign = 1;
+		i++;
+	}
+
+	for (j = 0; i < count; i++) {
+	
+		char c = buf[i];
+		
+		if ((c >= '0') && (c <= '9')) {
+			pair[j] *= 10;
+			pair[j] += (c - '0');
+		}
+		else if ((c == ' ') || (c == '\t')) {
+			if (pair[j] != 0) {
+				j++;
+
+				if ((sign != 0) || (j > 1))
+					break;
+			}
+		}
+		else
+			break;
+	}
+
+	if (sign != 0) {
+		if (pair[0] > 0)
+			acpuclk_set_vdd(0, sign * pair[0]);
+	}
+	else {
+		if ((pair[0] > 0) && (pair[1] > 0))
+			acpuclk_set_vdd((unsigned)pair[0], pair[1]);
+		else
+			return -EINVAL;
+	}
+	return count;
+}
+
+#endif	/* CONFIG_CPU_VOLTAGE_TABLE */
 
 cpufreq_freq_attr_ro_perm(cpuinfo_cur_freq, 0400);
 cpufreq_freq_attr_ro(cpuinfo_min_freq);
@@ -709,6 +960,19 @@ cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 
+#ifdef CONFIG_SYS_VOLTAGE_TABLE
+define_one_global_rw(sys_vdd_levels);
+#endif
+#ifdef CONFIG_CPU_L2_TABLE
+define_one_global_rw(cpu_l2_levels);
+#endif
+#ifdef CONFIG_L2_VOLTAGE_TABLE
+define_one_global_rw(l2_levels);
+#endif
+#ifdef CONFIG_CPU_VOLTAGE_TABLE
+define_one_global_rw(vdd_levels);
+#endif
+
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
 	&cpuinfo_max_freq.attr,
@@ -723,6 +987,50 @@ static struct attribute *default_attrs[] = {
 	&scaling_setspeed.attr,
 	NULL
 };
+#ifdef CONFIG_SYS_VOLTAGE_TABLE
+static struct attribute *sys_vddtbl_attrs[] = {
+	&sys_vdd_levels.attr,
+	NULL
+};
+
+static struct attribute_group sys_vddtbl_attr_group = {
+	.attrs = sys_vddtbl_attrs,
+	.name = "sys_vdd_table",
+};
+#endif
+#ifdef CONFIG_CPU_L2_TABLE
+static struct attribute *cpu_l2tbl_attrs[] = {
+	&cpu_l2_levels.attr,
+	NULL
+};
+
+static struct attribute_group cpu_l2tbl_attr_group = {
+	.attrs = cpu_l2tbl_attrs,
+	.name = "cpu_l2_table",
+};
+#endif
+#ifdef CONFIG_L2_VOLTAGE_TABLE
+static struct attribute *l2tbl_attrs[] = {
+	&l2_levels.attr,
+	NULL
+};
+
+static struct attribute_group l2tbl_attr_group = {
+	.attrs = l2tbl_attrs,
+	.name = "l2_table",
+};
+#endif
+#ifdef CONFIG_CPU_VOLTAGE_TABLE
+static struct attribute *vddtbl_attrs[] = {
+	&vdd_levels.attr,
+	NULL
+};
+
+static struct attribute_group vddtbl_attr_group = {
+	.attrs = vddtbl_attrs,
+	.name = "vdd_table",
+};
+#endif	/* CONFIG_CPU_VOLTAGE_TABLE */
 
 struct kobject *cpufreq_global_kobject;
 EXPORT_SYMBOL(cpufreq_global_kobject);
@@ -2177,7 +2485,7 @@ EXPORT_SYMBOL_GPL(cpufreq_unregister_driver);
 
 static int __init cpufreq_core_init(void)
 {
-	int cpu;
+	int cpu, rc;
 
 	for_each_possible_cpu(cpu) {
 		per_cpu(cpufreq_policy_cpu, cpu) = -1;
@@ -2187,6 +2495,22 @@ static int __init cpufreq_core_init(void)
 	cpufreq_global_kobject = kobject_create_and_add("cpufreq",
 						&cpu_sysdev_class.kset.kobj);
 	BUG_ON(!cpufreq_global_kobject);
+
+#ifdef CONFIG_SYS_VOLTAGE_TABLE
+	rc = sysfs_create_group(cpufreq_global_kobject, &sys_vddtbl_attr_group);
+#endif  /* CONFIG_SYS_VOLTAGE_TABLE */
+
+#ifdef CONFIG_CPU_L2_TABLE
+	rc = sysfs_create_group(cpufreq_global_kobject, &cpu_l2tbl_attr_group);
+#endif	/* CONFIG_CPU_L2_TABLE */
+
+#ifdef CONFIG_L2_VOLTAGE_TABLE
+	rc = sysfs_create_group(cpufreq_global_kobject, &l2tbl_attr_group);
+#endif	/* CONFIG_L2_VOLTAGE_TABLE */
+
+#ifdef CONFIG_CPU_VOLTAGE_TABLE
+	rc = sysfs_create_group(cpufreq_global_kobject, &vddtbl_attr_group);
+#endif	/* CONFIG_CPU_VOLTAGE_TABLE */
 
 	return 0;
 }
